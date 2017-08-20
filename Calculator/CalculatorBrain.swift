@@ -47,6 +47,7 @@ struct CalculatorBrain {
          "π": Operation.constant(Double.pi),
          "e": Operation.constant(Double(M_E)),
          "√": Operation.unaryOperation(sqrt),
+         "x²": Operation.unaryOperation({ $0 * $0 }),
          "cos": Operation.unaryOperation(cos),
          "±": Operation.unaryOperation({ -$0 }),
          "×": Operation.binaryOperation({ $0 * $1 }),
