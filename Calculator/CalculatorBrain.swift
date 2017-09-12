@@ -12,8 +12,6 @@ let formatter: NumberFormatter = {
 
 struct CalculatorBrain {
    
-   private var cache: (accumulator: Double?, descriptionAccumulator: String?)
-   
    var description: String? {
       get {
          if resultIsPending {
@@ -30,6 +28,14 @@ struct CalculatorBrain {
       }
    }
    
+   var resultIsPending: Bool {
+      get {
+         return pendingBinaryOperation != nil
+      }
+   }
+
+   private var cache: (accumulator: Double?, descriptionAccumulator: String?)
+
    private enum Operation {
       case nullaryOperation(() -> Double, String)
       case constant(Double, String)
@@ -129,9 +135,20 @@ struct CalculatorBrain {
       }
    }
    
-   var resultIsPending: Bool {
-      get {
-         return pendingBinaryOperation != nil
-      }
+   private enum OpStack {
+      case operand(Double)
+      case operation(String)
+      case variable(String)
+   }
+   
+   private var internalProgramm = [OpStack]()
+   
+   mutating func setOperand(variable named: String) {
+      
+   }
+   
+   func evaluate(using variables: Dictionary<String, Double>? = nil) -> (result: Double?, isPending: Bool, description: String) {
+      
+      return (result, isPending, description)
    }
 }
