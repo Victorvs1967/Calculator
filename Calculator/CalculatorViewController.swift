@@ -4,6 +4,7 @@ class CalculatorViewController: UIViewController {
   
   @IBOutlet weak var display: UILabel!
   @IBOutlet weak var displayDescription: UILabel!
+  @IBOutlet weak var displayM: UILabel!
   @IBOutlet weak var point: UIButton! {
     didSet {
       point.setTitle(decimalSeparator, for: .normal)
@@ -22,6 +23,7 @@ class CalculatorViewController: UIViewController {
   }
   
   private var brain = CalculatorBrain()
+  private var variableValues = [String: Double]()
   
   @IBAction func performOperation(_ sender: UIButton) {
     if userIsInTheMiddleOfTyping {
@@ -34,19 +36,40 @@ class CalculatorViewController: UIViewController {
     if let mathematicalSymbol = sender.currentTitle {
       brain.performOperation(mathematicalSymbol)
     }
-      displayValue = brain.result
+    displayResult = brain.evaluate(using: variableValues)
   }
   
   @IBAction func clearAll(_ sender: UIButton) {
     brain.clear()
-    display.text = "0"
-    displayDescription.text = " "
+    variableValues = [:]
+    displayResult = brain.evaluate()
   }
   
   @IBAction func backspace(_ sender: UIButton) {
-    guard userIsInTheMiddleOfTyping && !display.text!.isEmpty else { return }
-    display.text = String(display.text!.characters.dropLast())
-    if display.text!.isEmpty { displayValue = 0 }
+    if userIsInTheMiddleOfTyping {
+      guard !display.text!.isEmpty else { return }
+      display.text = String(display.text!.characters.dropLast())
+      if display.text!.isEmpty {
+        displayValue = 0
+        userIsInTheMiddleOfTyping = false
+        displayResult = brain.evaluate(using: variableValues)
+      }
+    } else {
+      brain.undo()
+      displayResult = brain.evaluate(using: variableValues)
+    }
+  }
+  
+  @IBAction func setM(_ sender: UIButton) {
+    userIsInTheMiddleOfTyping = false
+    let symbol = String(sender.currentTitle!.characters.dropFirst())
+    variableValues[symbol] = displayValue
+    displayResult = brain.evaluate(using: variableValues)
+  }
+  
+  @IBAction func pushM(_ sender: UIButton) {
+    brain.setOperand(variable: sender.currentTitle!)
+    displayResult = brain.evaluate(using: variableValues)
   }
   
   var userIsInTheMiddleOfTyping = false
@@ -72,9 +95,17 @@ class CalculatorViewController: UIViewController {
       if let value = newValue {
         display.text = formatter.string(from: NSNumber(value: value))
       }
-      displayDescription.text = brain.description! + (brain.resultIsPending ? " ..." : " =")
     }
   }
   
-  
+  var displayResult: (result: Double?, isPending: Bool, description: String) = (nil, false, " ") {
+    didSet {
+      displayValue = displayResult.result
+      if displayResult.result == nil && displayResult.description == " " {
+        displayValue = 0
+      }
+      displayDescription.text = displayResult.description != " " ? displayResult.description + (displayResult.isPending ? " ..." : " =") : " "
+      displayM.text = formatter.string(from: NSNumber(value: variableValues["M"] ?? 0))
+    }
+  }
 }
