@@ -15,7 +15,6 @@ class CalculatorViewController: UIViewController {
   private var variableValues = [String: Double]()
   
   var userIsInTheMiddleOfTyping = false
-  var operationSimbol: String!
   let decimalSeparator = formatter.decimalSeparator ?? "."
   
   var pointPresented: Bool {
@@ -38,11 +37,12 @@ class CalculatorViewController: UIViewController {
     }
   }
   
-  var displayResult: (result: Double?, isPending: Bool, description: String) = (nil, false, " ") {
+  var displayResult: (result: Double?, isPending: Bool, description: String, error: String?) = (nil, false, " ", nil) {
     didSet {
-      displayValue = displayResult.result
-      if displayResult.result == nil && displayResult.description == " " {
-        displayValue = 0
+      switch displayResult {
+      case (nil, _, " ", nil): displayValue = 0
+      case (let result, _, _, nil): displayValue = result
+      case (_, _, _, let error): display.text = error!
       }
       displayDescription.text = displayResult.description != " " ? displayResult.description + (displayResult.isPending ? " ..." : " =") : " "
       displayM.text = formatter.string(from: NSNumber(value: variableValues["M"] ?? 0))
