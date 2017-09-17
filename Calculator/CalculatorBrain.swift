@@ -14,7 +14,7 @@ struct CalculatorBrain {
       case nullaryOperation(() -> Double, String)
       case constant(Double)
       case unaryOperation((Double) -> Double, ((String) -> String)?, ((Double) -> String?)?)
-      case binaryOperation((Double, Double) -> Double, ((String, String) -> String)?, ((Double, Double) -> String?)?)
+      case binaryOperation((Double, Double) -> Double, ((String, String) -> String)?, ((Double, Double) -> String?)?, Int)
       case equals
    }
    
@@ -34,11 +34,11 @@ struct CalculatorBrain {
       "ln": Operation.unaryOperation(log, nil, nil),
       "±": Operation.unaryOperation({ -$0 }, nil, nil),
       "eˣ": Operation.unaryOperation(exp, nil, nil),
-      "xʸ": Operation.binaryOperation(pow, { $0 + "^" + $1 }, nil),
-      "×": Operation.binaryOperation(* , nil, nil),
-      "÷": Operation.binaryOperation(/, nil, { $1 == 0 ? "divide by zero" : nil }),
-      "+": Operation.binaryOperation(+, nil, nil),
-      "-": Operation.binaryOperation(-, nil, nil),
+      "xʸ": Operation.binaryOperation(pow, { $0 + "^" + $1 }, nil, 2),
+      "×": Operation.binaryOperation(* , nil, nil, 1),
+      "÷": Operation.binaryOperation(/, nil, { $1 == 0 ? "divide by zero" : nil }, 1),
+      "+": Operation.binaryOperation(+, nil, nil, 0),
+      "-": Operation.binaryOperation(-, nil, nil, 0),
       "=": Operation.equals
    ]
    
@@ -48,12 +48,19 @@ struct CalculatorBrain {
       var descriptionFunction: (String, String) -> String
       var descriptionOperand: String
       var validator: ((Double, Double) -> String?)?
+      var prevPrecedence: Int
+      var precedence: Int
       
       func perform(with secondOperand: Double) -> Double {
          return function(firstOperand, secondOperand)
       }
+      
       func performDescription(with secondOperand: String) -> String {
-         return descriptionFunction(descriptionOperand, secondOperand)
+         var descriptionOperandNew = descriptionOperand
+         if prevPrecedence < precedence {
+            descriptionOperandNew = "(" + descriptionOperandNew + ")"
+         }
+         return descriptionFunction(descriptionOperandNew, secondOperand)
       }
       
       func validate(with secondOperand: Double) -> String? {
@@ -88,9 +95,16 @@ struct CalculatorBrain {
       //evaluated variables
       var cache: (accumulator: Double?, descriptionAccumulator: String?)
       var error: String?
+      var prevPrecedence = Int.max
       
       var pendingBinaryOperation: PendingBinaryOperation?
       
+      var result: Double? {
+         get {
+            return cache.accumulator
+         }
+      }
+
       var resultIsPending: Bool {
          get {
             return pendingBinaryOperation != nil
@@ -107,23 +121,20 @@ struct CalculatorBrain {
          }
       }
       
-      var result: Double? {
-         get {
-            return cache.accumulator
-         }
-      }
       //evaluated functions
       func setOPerand(_ operand: Double) {
          cache.accumulator = operand
          
          if let value = cache.accumulator {
-            cache.descriptionAccumulator = formatter.string(from: NSNumber(value: value)) ?? " "
+            cache.descriptionAccumulator = formatter.string(from: NSNumber(value: value)) ?? ""
+            prevPrecedence = Int.max
          }
       }
       
       func setOperand(variable named: String) {
          cache.accumulator = variables?[named] ?? 0
          cache.descriptionAccumulator = named
+         prevPrecedence = Int.max
       }
       
       func performOperation(_ symbol: String) {
@@ -143,7 +154,7 @@ struct CalculatorBrain {
                   }
                   cache.descriptionAccumulator = descriptionFunction!(cache.descriptionAccumulator!)
                }
-            case .binaryOperation(let function, var descriptionFunction, let validator):
+            case .binaryOperation(let function, var descriptionFunction, let validator, let precedence):
                performPendingBinaryOperation()
                if cache.accumulator != nil {
                   if descriptionFunction == nil {
@@ -153,7 +164,9 @@ struct CalculatorBrain {
                                                                   firstOperand: cache.accumulator!,
                                                                   descriptionFunction: descriptionFunction!,
                                                                   descriptionOperand: cache.descriptionAccumulator!,
-                                                                  validator: validator)
+                                                                  validator: validator,
+                                                                  prevPrecedence: prevPrecedence,
+                                                                  precedence: precedence)
                   cache = (nil, nil)
                }
             case .equals:
@@ -167,6 +180,7 @@ struct CalculatorBrain {
             error = pendingBinaryOperation!.validate(with: cache.accumulator!)
             cache.accumulator = pendingBinaryOperation!.perform(with: cache.accumulator!)
             cache.descriptionAccumulator = pendingBinaryOperation!.performDescription(with: cache.descriptionAccumulator!)
+            prevPrecedence = pendingBinaryOperation!.precedence
             pendingBinaryOperation = nil
          }
       }
