@@ -25,8 +25,9 @@ class CalculatorViewController: UIViewController {
   
   var displayValue: Double? {
     get {
-      if let text = display.text, let value = Double(text) {
-        return value
+      if var text = display.text {
+        if text.contains(decimalSeparator) { text = text.replacingCharacters(in: text.range(of: decimalSeparator)!, with: ".") }
+        if let value = Double(text) { return value }
       }
       return nil
     }
